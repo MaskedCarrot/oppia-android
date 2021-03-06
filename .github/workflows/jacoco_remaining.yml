@@ -43,7 +43,7 @@ jobs:
      - name: Upload data module JaCoCo Coverage Report
        uses: codecov/codecov-action@v1
        with:
-        token: cea2720a-1021-4af7-a1e1-131895630631
+        token: c8983005-b84c-4403-b72a-043319bca5fe
         files: data/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml  
         name: oppia-android 
 
@@ -54,7 +54,7 @@ jobs:
      - name: Upload testing module JaCoCo Coverage Report
        uses: codecov/codecov-action@v1
        with:
-        token: cea2720a-1021-4af7-a1e1-131895630631
+        token: c8983005-b84c-4403-b72a-043319bca5fe
         files: testing/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml  
         name: oppia-android        
 
