@@ -49,6 +49,11 @@ android {
       }
     }
   }
+  buildTypes {
+    debug {
+      testCoverageEnabled true
+    }
+  }
 }
 
 dependencies {
