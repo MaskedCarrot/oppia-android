@@ -8,7 +8,7 @@ on:
   push:
     branches:
       # Push events on develop branch
-      - add-jacoco
+      - test_jacoco
 
 # This workflow has the following jobs:
 # robolectric_tests: Robolectric tests for all modules except the app module
