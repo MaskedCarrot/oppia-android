@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout>
+  <androidx.appcompat.widget.LinearLayoutCompat xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:layout_constraintVertical_chainStyle="spread_inside"
+    app:layout_constraintHorizontal_chainStyle="packed"
+    android:orientation="vertical"
+    android:gravity="center">
+
+    <Button
+      android:id="@+id/exploration_start_over"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_margin="100dp"
+      android:text="Start over"/>
+
+    <Button
+      android:id="@+id/exploration_resume"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:text="Resume"/>
+
+  </androidx.appcompat.widget.LinearLayoutCompat>
+</layout>

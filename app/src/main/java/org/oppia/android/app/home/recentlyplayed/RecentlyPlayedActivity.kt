@@ -7,6 +7,7 @@ import org.oppia.android.app.activity.InjectableAppCompatActivity
 import org.oppia.android.app.home.RouteToExplorationListener
 import org.oppia.android.app.player.exploration.ExplorationActivity
 import javax.inject.Inject
+import org.oppia.android.app.model.ExplorationCheckpoint
 
 /** Activity for recent stories. */
 class RecentlyPlayedActivity : InjectableAppCompatActivity(), RouteToExplorationListener {
@@ -42,7 +43,8 @@ class RecentlyPlayedActivity : InjectableAppCompatActivity(), RouteToExploration
     topicId: String,
     storyId: String,
     explorationId: String,
-    backflowScreen: Int?
+    backflowScreen: Int?,
+    explorationCheckpoint: ExplorationCheckpoint
   ) {
     startActivity(
       ExplorationActivity.createExplorationActivityIntent(
@@ -51,8 +53,10 @@ class RecentlyPlayedActivity : InjectableAppCompatActivity(), RouteToExploration
         topicId,
         storyId,
         explorationId,
-        backflowScreen
+        backflowScreen,
+        ExplorationCheckpoint.getDefaultInstance()
       )
     )
   }
+
 }

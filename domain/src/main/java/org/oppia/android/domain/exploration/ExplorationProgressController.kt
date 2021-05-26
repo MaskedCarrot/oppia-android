@@ -2,10 +2,17 @@ package org.oppia.android.domain.exploration
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import java.util.concurrent.locks.ReentrantLock
+import javax.inject.Inject
+import javax.inject.Singleton
+import kotlin.concurrent.withLock
 import org.oppia.android.app.model.AnswerOutcome
 import org.oppia.android.app.model.EphemeralState
 import org.oppia.android.app.model.Exploration
+import org.oppia.android.app.model.ExplorationCheckpoint
+import org.oppia.android.app.model.ExplorationCheckpointState
 import org.oppia.android.app.model.Hint
+import org.oppia.android.app.model.ProfileId
 import org.oppia.android.app.model.Solution
 import org.oppia.android.app.model.State
 import org.oppia.android.app.model.UserAnswer
@@ -15,12 +22,11 @@ import org.oppia.android.util.data.AsyncDataSubscriptionManager
 import org.oppia.android.util.data.AsyncResult
 import org.oppia.android.util.data.DataProvider
 import org.oppia.android.util.data.DataProviders
-import java.util.concurrent.locks.ReentrantLock
-import javax.inject.Inject
-import javax.inject.Singleton
-import kotlin.concurrent.withLock
 
 private const val CURRENT_STATE_DATA_PROVIDER_ID = "current_state_data_provider_id"
+private const val RECORD_EXPLORATION_CHECKPOINT_DATA_PROVIDER_ID =
+  "record_exploration_checkpoint_provider_id"
+
 /**
  * Controller that tracks and reports the learner's ephemeral/non-persisted progress through an
  * exploration. Note that this controller only supports one active exploration at a time.
@@ -36,7 +42,8 @@ class ExplorationProgressController @Inject constructor(
   private val asyncDataSubscriptionManager: AsyncDataSubscriptionManager,
   private val explorationRetriever: ExplorationRetriever,
   private val answerClassificationController: AnswerClassificationController,
-  private val exceptionsController: ExceptionsController
+  private val exceptionsController: ExceptionsController,
+  private val explorationCheckpointController: ExplorationCheckpointController
 ) {
   // TODO(#179): Add support for parameters.
   // TODO(#182): Add support for refresher explorations.
@@ -53,17 +60,21 @@ class ExplorationProgressController @Inject constructor(
       CURRENT_STATE_DATA_PROVIDER_ID,
       this::retrieveCurrentStateAsync
     )
+  
   private val explorationProgress = ExplorationProgress()
   private val explorationProgressLock = ReentrantLock()
 
   /** Resets this controller to begin playing the specified [Exploration]. */
-  internal fun beginExplorationAsync(explorationId: String) {
+  internal fun beginExplorationAsync(
+    explorationId: String,
+    explorationCheckpoint: ExplorationCheckpoint
+  ) {
     explorationProgressLock.withLock {
       check(explorationProgress.playStage == ExplorationProgress.PlayStage.NOT_PLAYING) {
         "Expected to finish previous exploration before starting a new one."
       }
-
       explorationProgress.currentExplorationId = explorationId
+      explorationProgress.explorationCheckpoint = explorationCheckpoint
       explorationProgress.advancePlayStageTo(ExplorationProgress.PlayStage.LOADING_EXPLORATION)
       asyncDataSubscriptionManager.notifyChangeAsync(CURRENT_STATE_DATA_PROVIDER_ID)
     }
@@ -343,12 +354,31 @@ class ExplorationProgressController @Inject constructor(
           "Cannot navigate to a next state if an answer submission is pending."
         }
         explorationProgress.stateDeck.navigateToNextState()
+
         asyncDataSubscriptionManager.notifyChangeAsync(CURRENT_STATE_DATA_PROVIDER_ID)
       }
       return MutableLiveData(AsyncResult.success<Any?>(null))
     } catch (e: Exception) {
       exceptionsController.logNonFatalException(e)
       return MutableLiveData(AsyncResult.failed(e))
+    }
+  }
+
+  fun createExplorationCheckpoint(): ExplorationCheckpoint =
+    explorationProgress.stateDeck.markExplorationCheckpoint()
+
+  fun getExplorationName(): String =
+    explorationProgress.currentExploration.title
+
+  fun changeCheckpointDatabaseStatus(isDatabaseFull: Boolean) {
+    explorationProgressLock.withLock {
+      explorationProgress.isDatabaseFull = isDatabaseFull
+    }
+  }
+
+  fun changeCheckpointStatus(isCheckpointUpdated: Boolean) {
+    explorationProgressLock.withLock {
+      explorationProgress.isCheckpointUpdated = isCheckpointUpdated
     }
   }
 
@@ -374,6 +404,23 @@ class ExplorationProgressController @Inject constructor(
    * exploration, it should return a pending state.
    */
   fun getCurrentState(): DataProvider<EphemeralState> = currentStateDataProvider
+  
+  private fun saveExplorationCheckpoint(): DataProvider<Any?> {
+    var explorationName: String?
+    var explorationId: String?
+    var internalProfileId: Int;
+    explorationProgressLock.withLock { 
+      explorationId = explorationProgress.currentExplorationId
+      explorationName = explorationProgress.currentExploration.title
+      internalProfileId = explorationProgress.internalProfileId
+    }
+    return explorationCheckpointController.recordExplorationCheckpoint(
+      ProfileId.newBuilder().setInternalId(internalProfileId).build(),
+      explorationId!!,
+      explorationName!!,
+      createExplorationCheckpoint()
+    )
+  }
 
   private suspend fun retrieveCurrentStateAsync(): AsyncResult<EphemeralState> {
     return try {
@@ -428,11 +475,64 @@ class ExplorationProgressController @Inject constructor(
   private fun finishLoadExploration(exploration: Exploration, progress: ExplorationProgress) {
     // The exploration must be initialized first since other lazy fields depend on it being inited.
     progress.currentExploration = exploration
-    progress.stateGraph.reset(exploration.statesMap)
-    progress.stateDeck.resetDeck(progress.stateGraph.getState(exploration.initStateName))
+
+    // load exploration from checkpoint.
+    loadProgressFromCheckpoint(progress)
 
     // Advance the stage, but do not notify observers since the current state can be reported
     // immediately to the UI.
     progress.advancePlayStageTo(ExplorationProgress.PlayStage.VIEWING_STATE)
+  }
+
+  private fun loadProgressFromCheckpoint(progress: ExplorationProgress) {
+    when (progress.explorationCheckpoint) {
+      progress.explorationCheckpoint.defaultInstanceForType -> {
+        explorationProgress.stateGraph.reset(
+          explorationProgress.currentExploration.statesMap
+        )
+        explorationProgress.stateDeck.resetDeck(
+          explorationProgress.stateGraph.getState(
+            explorationProgress.currentExploration.initStateName
+          )
+        )
+      }
+      else -> {
+        explorationProgress.stateGraph.reset(
+          explorationProgress.currentExploration.statesMap
+        )
+        explorationProgress.stateDeck.resumeDeck(
+          explorationProgress.stateGraph.getState(
+            progress.explorationCheckpoint.pendingStateName
+          ),
+          getPreviousStatesFromCheckpoint(
+            progress.explorationCheckpoint.explorationCheckpointStatesList,
+            explorationProgress,
+            progress.explorationCheckpoint.stateIndex
+          ),
+          progress.explorationCheckpoint.pendingUserAnswersList,
+          ArrayList(),
+          progress.explorationCheckpoint.stateIndex
+        )
+      }
+    }
+  }
+
+  private fun getPreviousStatesFromCheckpoint(
+    completedStates: List<ExplorationCheckpointState>,
+    progress: ExplorationProgress,
+    stateIndex: Int
+  ): List<EphemeralState> {
+    val previousStates: MutableList<EphemeralState> = ArrayList()
+    completedStates.forEachIndexed { index, state ->
+      previousStates.add(
+        EphemeralState.newBuilder()
+          .setState(progress.stateGraph.getState(state.stateName))
+          .setHasPreviousState(index != 0)
+          .setCompletedState(state.completedState)
+          .setHasNextState(stateIndex < index)
+          .build()
+      )
+    }
+    return previousStates
   }
 }

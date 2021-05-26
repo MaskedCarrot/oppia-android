@@ -1,10 +1,9 @@
-package org.oppia.android.app.home
+package org.oppia.android.app.topic
 
 import org.oppia.android.app.model.ExplorationCheckpoint
 
-/** Listener for when an activity should route to a exploration. */
-interface RouteToExplorationListener {
-  fun routeToExploration(
+interface RouteToResumeExplorationListener {
+  fun routeToResumeExploration(
     internalProfileId: Int,
     topicId: String,
     storyId: String,

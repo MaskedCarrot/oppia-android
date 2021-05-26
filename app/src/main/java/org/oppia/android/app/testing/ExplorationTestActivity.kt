@@ -6,6 +6,7 @@ import org.oppia.android.app.home.RouteToExplorationListener
 import org.oppia.android.app.player.exploration.ExplorationActivity
 import org.oppia.android.app.topic.TopicFragment
 import javax.inject.Inject
+import org.oppia.android.app.model.ExplorationCheckpoint
 
 /** The activity for testing [TopicFragment]. */
 class ExplorationTestActivity : InjectableAppCompatActivity(), RouteToExplorationListener {
@@ -23,7 +24,8 @@ class ExplorationTestActivity : InjectableAppCompatActivity(), RouteToExploratio
     topicId: String,
     storyId: String,
     explorationId: String,
-    backflowScreen: Int?
+    backflowScreen: Int?,
+    explorationCheckpoint:ExplorationCheckpoint
   ) {
     startActivity(
       ExplorationActivity.createExplorationActivityIntent(
@@ -32,7 +34,8 @@ class ExplorationTestActivity : InjectableAppCompatActivity(), RouteToExploratio
         topicId,
         storyId,
         explorationId,
-        backflowScreen
+        backflowScreen,
+        ExplorationCheckpoint.getDefaultInstance()
       )
     )
   }

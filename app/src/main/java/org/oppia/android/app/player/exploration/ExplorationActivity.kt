@@ -20,6 +20,8 @@ import org.oppia.android.app.player.stopplaying.StopExplorationDialogFragment
 import org.oppia.android.app.player.stopplaying.StopStatePlayingSessionListener
 import org.oppia.android.app.topic.conceptcard.ConceptCardListener
 import javax.inject.Inject
+import org.oppia.android.app.model.Exploration
+import org.oppia.android.app.model.ExplorationCheckpoint
 
 private const val TAG_STOP_EXPLORATION_DIALOG = "STOP_EXPLORATION_DIALOG"
 const val TAG_HINTS_AND_SOLUTION_DIALOG = "HINTS_AND_SOLUTION_DIALOG"
@@ -46,6 +48,7 @@ class ExplorationActivity :
   private lateinit var explorationId: String
   private lateinit var state: State
   private var backflowScreen: Int? = null
+  private lateinit var explorationCheckpoint: ExplorationCheckpoint
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -55,13 +58,17 @@ class ExplorationActivity :
     storyId = intent.getStringExtra(EXPLORATION_ACTIVITY_STORY_ID_ARGUMENT_KEY)
     explorationId = intent.getStringExtra(EXPLORATION_ACTIVITY_EXPLORATION_ID_ARGUMENT_KEY)
     backflowScreen = intent.getIntExtra(EXPLORATION_ACTIVITY_BACKFLOW_SCREEN_KEY, -1)
+    explorationCheckpoint = ExplorationCheckpoint.parseFrom(
+      intent.getByteArrayExtra(EXPLORATION_ACTIVITY_EXPLORATION_CHECKPOINT_KEY)
+    )
     explorationActivityPresenter.handleOnCreate(
       this,
       internalProfileId,
       topicId,
       storyId,
       explorationId,
-      backflowScreen
+      backflowScreen,
+      explorationCheckpoint
     )
   }
 
@@ -77,6 +84,8 @@ class ExplorationActivity :
       "ExplorationActivity.exploration_id"
     const val EXPLORATION_ACTIVITY_BACKFLOW_SCREEN_KEY =
       "ExplorationActivity.backflow_screen"
+    const val EXPLORATION_ACTIVITY_EXPLORATION_CHECKPOINT_KEY =
+      "ExplorationActivity.exploration_checkpoint"
 
     fun createExplorationActivityIntent(
       context: Context,
@@ -84,7 +93,8 @@ class ExplorationActivity :
       topicId: String,
       storyId: String,
       explorationId: String,
-      backflowScreen: Int?
+      backflowScreen: Int?,
+      explorationCheckpoint: ExplorationCheckpoint
     ): Intent {
       val intent = Intent(context, ExplorationActivity::class.java)
       intent.putExtra(EXPLORATION_ACTIVITY_PROFILE_ID_ARGUMENT_KEY, profileId)
@@ -92,6 +102,10 @@ class ExplorationActivity :
       intent.putExtra(EXPLORATION_ACTIVITY_STORY_ID_ARGUMENT_KEY, storyId)
       intent.putExtra(EXPLORATION_ACTIVITY_EXPLORATION_ID_ARGUMENT_KEY, explorationId)
       intent.putExtra(EXPLORATION_ACTIVITY_BACKFLOW_SCREEN_KEY, backflowScreen)
+      intent.putExtra(
+        EXPLORATION_ACTIVITY_EXPLORATION_CHECKPOINT_KEY,
+        explorationCheckpoint.toByteArray()
+      )
       return intent
     }
   }

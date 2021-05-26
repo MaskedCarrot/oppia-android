@@ -2,12 +2,15 @@ package org.oppia.android.domain.exploration
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import javax.inject.Inject
 import org.oppia.android.app.model.Exploration
+import org.oppia.android.app.model.ExplorationCheckpoint
+import org.oppia.android.app.model.ProfileId
 import org.oppia.android.domain.oppialogger.exceptions.ExceptionsController
 import org.oppia.android.util.data.AsyncResult
 import org.oppia.android.util.data.DataProvider
 import org.oppia.android.util.data.DataProviders
-import javax.inject.Inject
+import org.oppia.android.util.data.DataProviders.Companion.toLiveData
 
 private const val GET_EXPLORATION_BY_ID_PROVIDER_ID =
   "get_exploration_by_id_provider_id"
@@ -22,7 +25,8 @@ class ExplorationDataController @Inject constructor(
   private val explorationProgressController: ExplorationProgressController,
   private val explorationRetriever: ExplorationRetriever,
   private val dataProviders: DataProviders,
-  private val exceptionsController: ExceptionsController
+  private val exceptionsController: ExceptionsController,
+  private val explorationCheckpointController: ExplorationCheckpointController
 ) {
   /** Returns an [Exploration] given an ID. */
   fun getExplorationById(id: String): DataProvider<Exploration> {
@@ -44,14 +48,27 @@ class ExplorationDataController @Inject constructor(
    * @return a one-time [LiveData] to observe whether initiating the play request succeeded. The exploration may still
    *     fail to load, but this provides early-failure detection.
    */
-  fun startPlayingExploration(explorationId: String): LiveData<AsyncResult<Any?>> {
+  fun startPlayingExploration(
+    explorationId: String,
+    checkpoint: ExplorationCheckpoint = ExplorationCheckpoint.getDefaultInstance()
+  ): LiveData<AsyncResult<Any?>> {
     return try {
-      explorationProgressController.beginExplorationAsync(explorationId)
-      MutableLiveData(AsyncResult.success<Any?>(null))
+      explorationProgressController.beginExplorationAsync(explorationId, checkpoint)
+      MutableLiveData(AsyncResult.success(null))
     } catch (e: Exception) {
       exceptionsController.logNonFatalException(e)
       MutableLiveData(AsyncResult.failed(e))
     }
+  }
+
+  fun retrieveExplorationCheckpointLiveData(
+    explorationId: String,
+    internalProfileId: Int
+  ): LiveData<AsyncResult<ExplorationCheckpoint>> {
+    return explorationCheckpointController.retrieveExplorationCheckpoint(
+      ProfileId.newBuilder().setInternalId(internalProfileId).build(),
+      explorationId
+    ).toLiveData()
   }
 
   /**

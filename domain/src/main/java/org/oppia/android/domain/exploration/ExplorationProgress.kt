@@ -1,6 +1,7 @@
 package org.oppia.android.domain.exploration
 
 import org.oppia.android.app.model.Exploration
+import org.oppia.android.app.model.ExplorationCheckpoint
 import org.oppia.android.app.model.State
 import org.oppia.android.domain.state.StateDeck
 import org.oppia.android.domain.state.StateGraph
@@ -14,7 +15,9 @@ private const val TERMINAL_INTERACTION_ID = "EndExploration"
  * instances, but calling code is responsible for ensuring it is properly reset.
  */
 internal class ExplorationProgress {
+  internal var internalProfileId: Int = -1
   internal lateinit var currentExplorationId: String
+  internal lateinit var explorationCheckpoint: ExplorationCheckpoint
   internal lateinit var currentExploration: Exploration
   internal var playStage = PlayStage.NOT_PLAYING
   internal val stateGraph: StateGraph by lazy {
@@ -23,6 +26,9 @@ internal class ExplorationProgress {
   internal val stateDeck: StateDeck by lazy {
     StateDeck(stateGraph.getState(currentExploration.initStateName), ::isTopStateTerminal)
   }
+
+  internal var isDatabaseFull: Boolean = false
+  internal var isCheckpointUpdated: Boolean = false
 
   /**
    * Advances the current play stage to the specified stage, verifying that the transition is correct.

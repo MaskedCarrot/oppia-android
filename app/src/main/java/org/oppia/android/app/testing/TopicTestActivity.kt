@@ -14,6 +14,7 @@ import org.oppia.android.app.topic.questionplayer.QuestionPlayerActivity
 import org.oppia.android.app.topic.revisioncard.RevisionCardActivity
 import org.oppia.android.domain.topic.TEST_TOPIC_ID_0
 import javax.inject.Inject
+import org.oppia.android.app.model.ExplorationCheckpoint
 
 /** The activity for testing [TopicFragment]. */
 class TopicTestActivity :
@@ -60,7 +61,8 @@ class TopicTestActivity :
     topicId: String,
     storyId: String,
     explorationId: String,
-    backflowScreen: Int?
+    backflowScreen: Int?,
+    explorationCheckpoint: ExplorationCheckpoint
   ) {
     startActivity(
       ExplorationActivity.createExplorationActivityIntent(
@@ -69,7 +71,8 @@ class TopicTestActivity :
         topicId,
         storyId,
         explorationId,
-        backflowScreen
+        backflowScreen,
+        ExplorationCheckpoint.getDefaultInstance()
       )
     )
   }

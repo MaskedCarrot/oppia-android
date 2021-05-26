@@ -1,5 +1,6 @@
 package org.oppia.android.domain.util
 
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
 import org.oppia.android.util.caching.AssetRepository
@@ -10,6 +11,7 @@ class JsonAssetRetriever @Inject constructor(private val assetRepository: AssetR
 
   /** Loads the JSON string from an asset and converts it to a JSONObject */
   fun loadJsonFromAsset(assetName: String): JSONObject? {
+    Log.d("12345", "loadJsonFromAsset: this is that asset $assetName")
     return JSONObject(assetRepository.loadTextFileFromLocalAssets(assetName))
   }
 

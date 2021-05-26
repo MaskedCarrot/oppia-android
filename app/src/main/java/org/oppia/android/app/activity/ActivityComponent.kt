@@ -54,6 +54,8 @@ import org.oppia.android.app.topic.questionplayer.QuestionPlayerActivity
 import org.oppia.android.app.topic.revisioncard.RevisionCardActivity
 import org.oppia.android.app.walkthrough.WalkthroughActivity
 import javax.inject.Provider
+import org.oppia.android.app.resumeexploration.ResumeExplorationActivity
+import org.oppia.android.app.resumeexploration.ResumeExplorationActivityPresenter
 
 /** Root subcomponent for all activities. */
 @Subcomponent(modules = [ActivityModule::class])
@@ -118,4 +120,5 @@ interface ActivityComponent {
   fun inject(topicTestActivity: TopicTestActivity)
   fun inject(topicTestActivityForStory: TopicTestActivityForStory)
   fun inject(walkthroughActivity: WalkthroughActivity)
+  fun inject(resumeExplorationActivity: ResumeExplorationActivity)
 }

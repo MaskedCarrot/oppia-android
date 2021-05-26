@@ -1,5 +1,6 @@
 package org.oppia.android.domain.state
 
+import android.util.Log
 import org.oppia.android.app.model.AnswerOutcome
 import org.oppia.android.app.model.Hint
 import org.oppia.android.app.model.Outcome

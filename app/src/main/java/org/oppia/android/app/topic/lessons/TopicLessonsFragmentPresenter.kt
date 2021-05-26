@@ -1,5 +1,6 @@
 package org.oppia.android.app.topic.lessons
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,11 +9,14 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.Transformations
+import javax.inject.Inject
 import org.oppia.android.app.fragment.FragmentScope
 import org.oppia.android.app.home.RouteToExplorationListener
+import org.oppia.android.app.model.ExplorationCheckpoint
 import org.oppia.android.app.model.ProfileId
 import org.oppia.android.app.model.StorySummary
 import org.oppia.android.app.model.Topic
+import org.oppia.android.app.topic.RouteToResumeExplorationListener
 import org.oppia.android.app.topic.RouteToStoryListener
 import org.oppia.android.databinding.TopicLessonsFragmentBinding
 import org.oppia.android.domain.exploration.ExplorationDataController
@@ -20,7 +24,6 @@ import org.oppia.android.domain.oppialogger.OppiaLogger
 import org.oppia.android.domain.topic.TopicController
 import org.oppia.android.util.data.AsyncResult
 import org.oppia.android.util.data.DataProviders.Companion.toLiveData
-import javax.inject.Inject
 
 /** The presenter for [TopicLessonsFragment]. */
 @FragmentScope
@@ -29,10 +32,11 @@ class TopicLessonsFragmentPresenter @Inject constructor(
   private val fragment: Fragment,
   private val oppiaLogger: OppiaLogger,
   private val explorationDataController: ExplorationDataController,
-  private val topicController: TopicController
+  private val topicController: TopicController,
 ) : StorySummarySelector, ChapterSummarySelector {
-  private val routeToExplorationListener = activity as RouteToExplorationListener
+  private val routeToResumeExplorationListener = activity as RouteToResumeExplorationListener
   private val routeToStoryListener = activity as RouteToStoryListener
+  private val routeToExplorationListener = activity as RouteToExplorationListener
 
   private var currentExpandedChapterListIndex: Int? = null
 
@@ -140,12 +144,42 @@ class TopicLessonsFragmentPresenter @Inject constructor(
   }
 
   override fun selectChapterSummary(storyId: String, explorationId: String) {
-    playExploration(
-      internalProfileId,
-      topicId,
-      storyId,
+    loadExplorationCheckpoint(explorationId)
+  }
+
+  private fun loadExplorationCheckpoint(explorationId: String) {
+    explorationDataController.retrieveExplorationCheckpointLiveData(
       explorationId,
-      /* backflowScreen= */ 0
+      internalProfileId
+    ).observe(
+      fragment,
+      Observer<AsyncResult<ExplorationCheckpoint>> { result ->
+        when {
+          result.isPending() -> Log.d(
+            "TopicLessonsFragment",
+            "Loading exploration checkpoint."
+          )
+          result.isFailure() -> Log.e(
+            "TopicLessonsFragment",
+            "Failed to load exploration checkpoint.",
+            result.getErrorOrNull()
+          )
+          else -> {
+            Log.d(
+              "TopicLessonsFragment",
+              "Exploration checkpoint loaded, starting exploration."
+            )
+            playExploration(
+              internalProfileId,
+              topicId,
+              storyId,
+              explorationId,
+              /* backflowScreen= */ 0,
+              result.getOrDefault(ExplorationCheckpoint.getDefaultInstance())
+            )
+          }
+        }
+      }
     )
   }
 
@@ -154,33 +188,60 @@ class TopicLessonsFragmentPresenter @Inject constructor(
     topicId: String,
     storyId: String,
     explorationId: String,
-    backflowScreen: Int?
+    backflowScreen: Int?,
+    checkpoint: ExplorationCheckpoint
   ) {
-    explorationDataController.startPlayingExploration(
-      explorationId
-    ).observe(
-      fragment,
-      Observer<AsyncResult<Any?>> { result ->
-        when {
-          result.isPending() -> oppiaLogger.d("TopicLessonsFragment", "Loading exploration")
-          result.isFailure() -> oppiaLogger.e(
-            "TopicLessonsFragment",
-            "Failed to load exploration",
-            result.getErrorOrNull()!!
-          )
-          else -> {
-            oppiaLogger.d("TopicLessonsFragment", "Successfully loaded exploration")
-            routeToExplorationListener.routeToExploration(
-              internalProfileId,
-              topicId,
-              storyId,
-              explorationId,
-              backflowScreen
-            )
+    when (checkpoint) {
+      checkpoint.defaultInstanceForType -> {
+        explorationDataController.startPlayingExploration(
+          explorationId,
+          checkpoint
+        ).observe(
+          fragment,
+          Observer<AsyncResult<Any?>> { result ->
+            when {
+              result.isPending() -> Log.d(
+                "TopicLessonsFragment",
+                "Loading exploration"
+              )
+              result.isFailure() -> oppiaLogger.e(
+                "TopicLessonsFragment",
+                "Failed to load exploration",
+                result.getErrorOrNull()!!
+              )
+              else -> {
+                Log.d(
+                  "TopicLessonsFragment",
+                  "Successfully loaded exploration"
+                )
+                routeToExplorationListener.routeToExploration(
+                  internalProfileId,
+                  topicId,
+                  storyId,
+                  explorationId,
+                  backflowScreen,
+                  checkpoint
+                )
+              }
+            }
           }
-        }
+        )
       }
-    )
+      else -> {
+        Log.d(
+          "TopicLessonsFragment",
+          "Successfully loaded exploration"
+        )
+        routeToResumeExplorationListener.routeToResumeExploration(
+          internalProfileId,
+          topicId,
+          storyId,
+          explorationId,
+          backflowScreen,
+          checkpoint
+        )
+      }
+    }
   }
 
   fun storySummaryClicked(storySummary: StorySummary) {

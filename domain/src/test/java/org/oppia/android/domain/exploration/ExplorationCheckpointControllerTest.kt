@@ -1,11 +1,9 @@
-package org.oppia.android.domain.topic
-
+package org.oppia.android.domain.exploration
+/*
 import android.app.Application
 import android.content.Context
-import androidx.lifecycle.Observer
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.google.common.truth.Truth.assertThat
 import dagger.BindsInstance
 import dagger.Component
 import dagger.Module
@@ -16,25 +14,16 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.mockito.ArgumentCaptor
-import org.mockito.Captor
-import org.mockito.Mock
-import org.mockito.Mockito.atLeastOnce
-import org.mockito.Mockito.verify
 import org.mockito.junit.MockitoJUnit
 import org.mockito.junit.MockitoRule
+import org.oppia.android.app.model.ExplorationCheckpoint
 import org.oppia.android.app.model.ProfileId
-import org.oppia.android.domain.oppialogger.LogStorageModule
 import org.oppia.android.testing.TestLogReportingModule
-import org.oppia.android.testing.profile.ProfileTestHelper
 import org.oppia.android.testing.robolectric.RobolectricModule
 import org.oppia.android.testing.threading.TestCoroutineDispatchers
 import org.oppia.android.testing.threading.TestDispatcherModule
-import org.oppia.android.testing.time.FakeOppiaClock
 import org.oppia.android.testing.time.FakeOppiaClockModule
 import org.oppia.android.util.caching.CacheAssetsLocally
-import org.oppia.android.util.data.AsyncResult
-import org.oppia.android.util.data.DataProviders.Companion.toLiveData
 import org.oppia.android.util.data.DataProvidersInjector
 import org.oppia.android.util.data.DataProvidersInjectorProvider
 import org.oppia.android.util.logging.EnableConsoleLog
@@ -44,11 +33,11 @@ import org.oppia.android.util.logging.LogLevel
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.LooperMode
 
-/** Tests for [StoryProgressController]. */
+/** Tests for [ExplorationCheckpointController].*/
 @RunWith(AndroidJUnit4::class)
 @LooperMode(LooperMode.Mode.PAUSED)
-@Config(application = StoryProgressControllerTest.TestApplication::class)
-class StoryProgressControllerTest {
+@Config(application = ExplorationCheckpointControllerTest.TestApplication::class)
+class ExplorationCheckpointControllerTest {
 
   @Rule
   @JvmField
@@ -61,66 +50,36 @@ class StoryProgressControllerTest {
   lateinit var context: Context
 
   @Inject
-  lateinit var storyProgressController: StoryProgressController
-
-  @Inject
-  lateinit var profileTestHelper: ProfileTestHelper
-
-  @Inject
-  lateinit var fakeOppiaClock: FakeOppiaClock
-
-  @Mock
-  lateinit var mockRecordProgressObserver: Observer<AsyncResult<Any?>>
-
-  @Captor
-  lateinit var recordProgressResultCaptor: ArgumentCaptor<AsyncResult<Any?>>
+  lateinit var explorationCheckpointController: ExplorationCheckpointController
 
   private lateinit var profileId: ProfileId
 
+  private lateinit var explorationCheckpoint: ExplorationCheckpoint
+  private lateinit var explorationId: String
+  private lateinit var explorationName: String
+
   @Before
   fun setUp() {
+    explorationId = "test_exploration"
+    explorationName = "Test exploration"
     profileId = ProfileId.newBuilder().setInternalId(0).build()
+    explorationCheckpoint = ExplorationCheckpoint.newBuilder().setStateIndex(5).build()
     setUpTestApplicationComponent()
   }
 
   private fun setUpTestApplicationComponent() {
-    ApplicationProvider.getApplicationContext<TestApplication>().inject(this)
+    ApplicationProvider.getApplicationContext<ExplorationCheckpointControllerTest.TestApplication>()
+      .inject(this)
   }
 
   @Test
-  fun testStoryProgressController_recordCompletedChapter_isSuccessful() {
-    storyProgressController.recordCompletedChapter(
+  fun testExplorationCheckpointController_recordExplorationCheckpoint_isSuccessful() {
+    explorationCheckpointController.recordExplorationCheckpoint(
       profileId,
-      FRACTIONS_TOPIC_ID,
-      FRACTIONS_STORY_ID_0,
-      FRACTIONS_EXPLORATION_ID_0,
-      fakeOppiaClock.getCurrentTimeMs()
-    ).toLiveData().observeForever(mockRecordProgressObserver)
-    testCoroutineDispatchers.runCurrent()
-
-    verifyRecordProgressSucceeded()
-  }
-
-  @Test
-  fun testStoryProgressController_recordRecentlyPlayedChapter_isSuccessful() {
-    storyProgressController.recordRecentlyPlayedChapter(
-      profileId,
-      FRACTIONS_TOPIC_ID,
-      FRACTIONS_STORY_ID_0,
-      FRACTIONS_EXPLORATION_ID_0,
-      fakeOppiaClock.getCurrentTimeMs()
-    ).toLiveData().observeForever(mockRecordProgressObserver)
-    testCoroutineDispatchers.runCurrent()
-
-    verifyRecordProgressSucceeded()
-  }
-
-  private fun verifyRecordProgressSucceeded() {
-    verify(
-      mockRecordProgressObserver,
-      atLeastOnce()
-    ).onChanged(recordProgressResultCaptor.capture())
-    assertThat(recordProgressResultCaptor.value.isSuccess()).isTrue()
+      explorationId,
+      explorationName,
+      explorationCheckpoint
+    )
   }
 
   // TODO(#89): Move this to a common test application component.
@@ -155,33 +114,37 @@ class StoryProgressControllerTest {
   @Singleton
   @Component(
     modules = [
-      TestModule::class, TestLogReportingModule::class, LogStorageModule::class,
-      TestDispatcherModule::class, RobolectricModule::class, FakeOppiaClockModule::class
+      TestModule::class, TestLogReportingModule::class,
+      ExplorationStorageModule::class, TestDispatcherModule::class, RobolectricModule::class,
+      FakeOppiaClockModule::class
     ]
   )
+
   interface TestApplicationComponent : DataProvidersInjector {
     @Component.Builder
     interface Builder {
       @BindsInstance
       fun setApplication(application: Application): Builder
 
-      fun build(): TestApplicationComponent
+      fun build(): ExplorationCheckpointControllerTest.TestApplicationComponent
     }
 
-    fun inject(storyProgressControllerTest: StoryProgressControllerTest)
+    fun inject(explorationCheckpointControllerTest: ExplorationCheckpointControllerTest)
   }
 
   class TestApplication : Application(), DataProvidersInjectorProvider {
     private val component: TestApplicationComponent by lazy {
-      DaggerStoryProgressControllerTest_TestApplicationComponent.builder()
+      ExplorationCheckpointControllerTest_TestApplicationComponent.builder()
         .setApplication(this)
         .build()
     }
 
-    fun inject(storyProgressControllerTest: StoryProgressControllerTest) {
-      component.inject(storyProgressControllerTest)
+    fun inject(explorationCheckpointControllerTest: ExplorationCheckpointControllerTest) {
+      component.inject(explorationCheckpointControllerTest)
     }
 
     override fun getDataProvidersInjector(): DataProvidersInjector = component
   }
 }
+
+ */

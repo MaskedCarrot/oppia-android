@@ -3,14 +3,17 @@ package org.oppia.android.app.topic
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
+import javax.inject.Inject
 import org.oppia.android.app.activity.InjectableAppCompatActivity
 import org.oppia.android.app.drawer.KEY_NAVIGATION_PROFILE_ID
 import org.oppia.android.app.home.RouteToExplorationListener
+import org.oppia.android.app.model.ExplorationCheckpoint
 import org.oppia.android.app.player.exploration.ExplorationActivity
+import org.oppia.android.app.resumeexploration.ResumeExplorationActivity
 import org.oppia.android.app.story.StoryActivity
 import org.oppia.android.app.topic.questionplayer.QuestionPlayerActivity
 import org.oppia.android.app.topic.revisioncard.RevisionCardActivity
-import javax.inject.Inject
 
 private const val TOPIC_ACTIVITY_TOPIC_ID_ARGUMENT_KEY = "TopicActivity.topic_id"
 private const val TOPIC_ACTIVITY_STORY_ID_ARGUMENT_KEY = "TopicActivity.story_id"
@@ -20,6 +23,7 @@ class TopicActivity :
   InjectableAppCompatActivity(),
   RouteToQuestionPlayerListener,
   RouteToStoryListener,
+  RouteToResumeExplorationListener,
   RouteToExplorationListener,
   RouteToRevisionCardListener {
 
@@ -72,12 +76,34 @@ class TopicActivity :
     )
   }
 
+  override fun routeToResumeExploration(
+    internalProfileId: Int,
+    topicId: String,
+    storyId: String,
+    explorationId: String,
+    backflowScreen: Int?,
+    explorationCheckpoint: ExplorationCheckpoint
+  ) {
+    startActivity(
+      ResumeExplorationActivity.createResumeExplorationActivityIntent(
+        this,
+        internalProfileId,
+        topicId,
+        storyId,
+        explorationId,
+        backflowScreen,
+        explorationCheckpoint
+      )
+    )
+  }
+
   override fun routeToExploration(
     internalProfileId: Int,
     topicId: String,
     storyId: String,
     explorationId: String,
-    backflowScreen: Int?
+    backflowScreen: Int?,
+    explorationCheckpoint: ExplorationCheckpoint
   ) {
     startActivity(
       ExplorationActivity.createExplorationActivityIntent(
@@ -86,7 +112,8 @@ class TopicActivity :
         topicId,
         storyId,
         explorationId,
-        backflowScreen
+        backflowScreen,
+        explorationCheckpoint
       )
     )
   }

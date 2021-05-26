@@ -1,8 +1,11 @@
 package org.oppia.android.domain.state
 
+import android.util.Log
 import org.oppia.android.app.model.AnswerAndResponse
 import org.oppia.android.app.model.CompletedState
 import org.oppia.android.app.model.EphemeralState
+import org.oppia.android.app.model.ExplorationCheckpoint
+import org.oppia.android.app.model.ExplorationCheckpointState
 import org.oppia.android.app.model.Hint
 import org.oppia.android.app.model.PendingState
 import org.oppia.android.app.model.Solution
@@ -34,6 +37,25 @@ internal class StateDeck internal constructor(
     currentDialogInteractions.clear()
     hintList.clear()
     stateIndex = 0
+  }
+
+  /** Sets this deck to a saved checkpoint. */
+  internal fun resumeDeck(
+    pendingTopState: State,
+    previousStates: List<EphemeralState>,
+    currentDialogInteractions: List<AnswerAndResponse>,
+    hintList: List<Hint>,
+    stateIndex: Int
+
+  ) {
+    this.pendingTopState = pendingTopState
+    this.previousStates.clear()
+    this.previousStates.addAll(previousStates)
+    this.currentDialogInteractions.clear()
+    this.currentDialogInteractions.addAll(currentDialogInteractions)
+    this.hintList.clear()
+    this.hintList.addAll(hintList)
+    this.stateIndex = stateIndex
   }
 
   /** Navigates to the previous State in the deck, or fails if this isn't possible. */
@@ -170,6 +192,24 @@ internal class StateDeck internal constructor(
       .setCorrectAnswer(state.interaction.solution.correctAnswer)
       .setExplanation(state.interaction.solution.explanation)
       .build()
+  }
+
+  internal fun markExplorationCheckpoint(): ExplorationCheckpoint {
+    val explorationCheckpoint = ExplorationCheckpoint.newBuilder()
+
+    previousStates.forEach { state ->
+      explorationCheckpoint.addExplorationCheckpointStates(
+        ExplorationCheckpointState.newBuilder()
+          .setCompletedState(state.completedState)
+          .setStateName(state.state.name)
+      )
+    }
+    explorationCheckpoint.pendingStateName = pendingTopState.name
+    explorationCheckpoint.hintIndex = hintList.size
+    explorationCheckpoint.stateIndex = stateIndex
+    explorationCheckpoint.addAllPendingUserAnswers(currentDialogInteractions)
+
+    return explorationCheckpoint.build()
   }
 
   private fun getCurrentPendingState(): EphemeralState {

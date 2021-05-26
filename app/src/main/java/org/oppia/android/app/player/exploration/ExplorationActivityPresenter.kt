@@ -26,6 +26,7 @@ import org.oppia.android.domain.oppialogger.OppiaLogger
 import org.oppia.android.util.data.AsyncResult
 import org.oppia.android.util.data.DataProviders.Companion.toLiveData
 import javax.inject.Inject
+import org.oppia.android.app.model.ExplorationCheckpoint
 
 const val TAG_EXPLORATION_FRAGMENT = "TAG_EXPLORATION_FRAGMENT"
 const val TAG_EXPLORATION_MANAGER_FRAGMENT = "TAG_EXPLORATION_MANAGER_FRAGMENT"
@@ -64,7 +65,8 @@ class ExplorationActivityPresenter @Inject constructor(
     topicId: String,
     storyId: String,
     explorationId: String,
-    backflowScreen: Int?
+    backflowScreen: Int?,
+    explorationCheckpoint: ExplorationCheckpoint
   ) {
     val binding = DataBindingUtil.setContentView<ExplorationActivityBinding>(
       activity,
@@ -298,5 +300,9 @@ class ExplorationActivityPresenter @Inject constructor(
         TAG_EXPLORATION_FRAGMENT
       ) as ExplorationFragment
     explorationFragment.revealSolution()
+  }
+
+  fun resumeFromExplorationCheckpoint() {
+
   }
 }

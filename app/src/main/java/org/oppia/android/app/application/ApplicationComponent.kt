@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.work.Configuration
 import dagger.BindsInstance
 import dagger.Component
+import javax.inject.Provider
+import javax.inject.Singleton
 import org.oppia.android.app.activity.ActivityComponent
 import org.oppia.android.app.player.state.hintsandsolution.HintsAndSolutionConfigModule
 import org.oppia.android.app.shim.IntentFactoryShimModule
@@ -21,6 +23,7 @@ import org.oppia.android.domain.classify.rules.numberwithunits.NumberWithUnitsRu
 import org.oppia.android.domain.classify.rules.numericinput.NumericInputRuleModule
 import org.oppia.android.domain.classify.rules.ratioinput.RatioInputModule
 import org.oppia.android.domain.classify.rules.textinput.TextInputRuleModule
+import org.oppia.android.domain.exploration.ExplorationStorageModule
 import org.oppia.android.domain.onboarding.ExpirationMetaDataRetrieverModule
 import org.oppia.android.domain.oppialogger.ApplicationStartupListener
 import org.oppia.android.domain.oppialogger.LogStorageModule
@@ -40,8 +43,6 @@ import org.oppia.android.util.parser.image.GlideImageLoaderModule
 import org.oppia.android.util.parser.image.ImageParsingModule
 import org.oppia.android.util.system.OppiaClockModule
 import org.oppia.android.util.threading.DispatcherModule
-import javax.inject.Provider
-import javax.inject.Singleton
 
 /**
  * Root Dagger component for the application. All application-scoped modules should be included in
@@ -67,7 +68,7 @@ import javax.inject.Singleton
     UncaughtExceptionLoggerModule::class, ApplicationStartupListenerModule::class,
     LogUploadWorkerModule::class, WorkManagerConfigurationModule::class,
     HintsAndSolutionConfigModule::class, FirebaseLogUploaderModule::class,
-    NetworkModule::class, PracticeTabModule::class,
+    NetworkModule::class, PracticeTabModule::class, ExplorationStorageModule::class
   ]
 )
 interface ApplicationComponent : ApplicationInjector {

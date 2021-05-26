@@ -10,9 +10,11 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.Transformations
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import javax.inject.Inject
 import org.oppia.android.R
 import org.oppia.android.app.fragment.FragmentScope
 import org.oppia.android.app.home.RouteToExplorationListener
+import org.oppia.android.app.model.ExplorationCheckpoint
 import org.oppia.android.app.model.ProfileId
 import org.oppia.android.app.model.PromotedActivityList
 import org.oppia.android.app.model.PromotedStory
@@ -23,7 +25,6 @@ import org.oppia.android.domain.topic.TopicListController
 import org.oppia.android.util.data.AsyncResult
 import org.oppia.android.util.data.DataProviders.Companion.toLiveData
 import org.oppia.android.util.parser.html.StoryHtmlParserEntityType
-import javax.inject.Inject
 
 /** The presenter for [RecentlyPlayedFragment]. */
 @FragmentScope
@@ -236,7 +237,8 @@ class RecentlyPlayedFragmentPresenter @Inject constructor(
               topicId,
               storyId,
               explorationId,
-              /* backflowScreen = */ null
+              /* backflowScreen = */ null,
+              ExplorationCheckpoint.getDefaultInstance()
             )
             activity.finish()
           }

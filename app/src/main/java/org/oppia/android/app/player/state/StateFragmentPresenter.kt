@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.LiveData
@@ -13,11 +14,13 @@ import androidx.lifecycle.Observer
 import androidx.lifecycle.Transformations
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import javax.inject.Inject
 import nl.dionsegijn.konfetti.KonfettiView
 import org.oppia.android.R
 import org.oppia.android.app.fragment.FragmentScope
 import org.oppia.android.app.model.AnswerOutcome
 import org.oppia.android.app.model.EphemeralState
+import org.oppia.android.app.model.ExplorationCheckpoint
 import org.oppia.android.app.model.HelpIndex
 import org.oppia.android.app.model.Hint
 import org.oppia.android.app.model.ProfileId
@@ -36,6 +39,7 @@ import org.oppia.android.app.topic.conceptcard.ConceptCardFragment.Companion.CON
 import org.oppia.android.app.utility.SplitScreenManager
 import org.oppia.android.app.viewmodel.ViewModelProvider
 import org.oppia.android.databinding.StateFragmentBinding
+import org.oppia.android.domain.exploration.ExplorationCheckpointController
 import org.oppia.android.domain.exploration.ExplorationProgressController
 import org.oppia.android.domain.oppialogger.OppiaLogger
 import org.oppia.android.domain.topic.StoryProgressController
@@ -44,7 +48,6 @@ import org.oppia.android.util.data.DataProviders.Companion.toLiveData
 import org.oppia.android.util.gcsresource.DefaultResourceBucketName
 import org.oppia.android.util.parser.html.ExplorationHtmlParserEntityType
 import org.oppia.android.util.system.OppiaClock
-import javax.inject.Inject
 
 const val STATE_FRAGMENT_PROFILE_ID_ARGUMENT_KEY = "STATE_FRAGMENT_PROFILE_ID_ARGUMENT_KEY"
 const val STATE_FRAGMENT_TOPIC_ID_ARGUMENT_KEY = "STATE_FRAGMENT_TOPIC_ID_ARGUMENT_KEY"
@@ -61,6 +64,7 @@ class StateFragmentPresenter @Inject constructor(
   private val context: Context,
   private val viewModelProvider: ViewModelProvider<StateViewModel>,
   private val explorationProgressController: ExplorationProgressController,
+  private val explorationCheckpointController: ExplorationCheckpointController,
   private val storyProgressController: StoryProgressController,
   private val oppiaLogger: OppiaLogger,
   @DefaultResourceBucketName private val resourceBucketName: String,
@@ -71,6 +75,10 @@ class StateFragmentPresenter @Inject constructor(
 
   private val routeToHintsAndSolutionListener = activity as RouteToHintsAndSolutionListener
   private val hasConversationView = true
+
+  // TODO("Try to move saving mechanism to ExplorationProgressController.").
+  private var isDatabaseFull = false
+  private var isExplorationCheckpointUpdated = false
 
   private lateinit var currentState: State
   private lateinit var profileId: ProfileId
@@ -88,6 +96,7 @@ class StateFragmentPresenter @Inject constructor(
   private val ephemeralStateLiveData: LiveData<AsyncResult<EphemeralState>> by lazy {
     explorationProgressController.getCurrentState().toLiveData()
   }
+  private lateinit var explorationCheckpointLiveData: LiveData<AsyncResult<ExplorationCheckpoint>>
 
   fun handleCreateView(
     inflater: LayoutInflater,
@@ -401,6 +410,13 @@ class StateFragmentPresenter @Inject constructor(
     answerOutcomeLiveData.observe(
       fragment,
       Observer { result ->
+
+        saveExplorationCheckpoint(
+          explorationId,
+          explorationProgressController.createExplorationCheckpoint(),
+          explorationProgressController.getExplorationName()
+        )
+
         // If the answer was submitted on behalf of the Continue interaction, automatically continue to the next state.
         if (result.state.interaction.id == "Continue") {
           recyclerViewAssembler.stopHintsFromShowing()
@@ -539,6 +555,61 @@ class StateFragmentPresenter @Inject constructor(
       storyId,
       explorationId,
       oppiaClock.getCurrentTimeMs()
+    )
+  }
+
+  private fun markExplorationAsStartedNotCompletedSaved() {
+    storyProgressController.recordStartedNotCompletedProgressSavedChapter(
+      profileId,
+      topicId,
+      storyId,
+      explorationId,
+      oppiaClock.getCurrentTimeMs()
+    )
+  }
+
+  private fun markExplorationAsStartedNotCompletedNotSaved() {
+    storyProgressController.recordStartedNotCompletedNotProgressSavedChapter(
+      profileId,
+      topicId,
+      storyId,
+      explorationId,
+      oppiaClock.getCurrentTimeMs()
+    )
+  }
+
+  private fun saveExplorationCheckpoint(
+    explorationId: String,
+    explorationCheckpoint: ExplorationCheckpoint,
+    explorationName: String
+  ) {
+    explorationCheckpointController.recordExplorationCheckpoint(
+      profileId,
+      explorationId,
+      explorationName,
+      explorationCheckpoint
+    ).toLiveData().observe(
+      fragment,
+      Observer {
+        if (it.isSuccess()) {
+          Toast.makeText(context, "Exploration saved.", Toast.LENGTH_SHORT).show()
+          if (!isExplorationCheckpointUpdated) {
+            markExplorationAsStartedNotCompletedSaved()
+            isExplorationCheckpointUpdated = true
+          }
+
+          isDatabaseFull = when (it.getOrDefault(null)) {
+            is ExplorationCheckpointController.ExplorationCheckpointDatabaseSizeLimitExceeded -> true
+            else -> false
+          }
+        } else if (it.isFailure()) {
+          Toast.makeText(context, "Exploration NOT saved.", Toast.LENGTH_SHORT).show()
+          if (isExplorationCheckpointUpdated) {
+            markExplorationAsStartedNotCompletedNotSaved()
+            isExplorationCheckpointUpdated = false
+          }
+        }
+      }
     )
   }
 }

@@ -35,6 +35,7 @@ import org.oppia.android.util.parser.html.HtmlParser
 import org.oppia.android.util.parser.html.TopicHtmlParserEntityType
 import org.oppia.android.util.system.OppiaClock
 import javax.inject.Inject
+import org.oppia.android.app.model.ExplorationCheckpoint
 
 /** The presenter for [StoryFragment]. */
 class StoryFragmentPresenter @Inject constructor(
@@ -109,7 +110,8 @@ class StoryFragmentPresenter @Inject constructor(
       topicId,
       storyId,
       explorationId,
-      backflowScreen
+      backflowScreen,
+      ExplorationCheckpoint.getDefaultInstance()
     )
   }
 
